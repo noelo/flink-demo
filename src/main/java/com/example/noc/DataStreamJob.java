@@ -4,6 +4,8 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.pulsar.common.config.PulsarOptions;
+import org.apache.flink.connector.pulsar.sink.PulsarSink;
+import org.apache.flink.connector.pulsar.sink.writer.serializer.PulsarSerializationSchema;
 import org.apache.flink.connector.pulsar.source.PulsarSource;
 import org.apache.flink.connector.pulsar.source.PulsarSourceOptions;
 import org.apache.flink.connector.pulsar.source.enumerator.cursor.StartCursor;
@@ -17,7 +19,6 @@ import org.apache.pulsar.client.api.SubscriptionType;
 public class DataStreamJob {
 
     public static void main(String[] args) throws Exception {
-        System.out.println("Starting....getting env");
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         PulsarSource<String> fixedSource = PulsarSource.builder()
@@ -34,6 +35,16 @@ public class DataStreamJob {
                 .setConfig(PulsarSourceOptions.PULSAR_ENABLE_AUTO_ACKNOWLEDGE_MESSAGE, Boolean.TRUE)
                 .build();
 
+        PulsarSink<String> fixedDest = PulsarSink.builder()
+                .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
+                .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
+                .setTopics("TestDataTopicSink")
+                .setSerializationSchema(PulsarSerializationSchema.flinkSchema(new SimpleStringSchema()))
+                .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
+                .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
+                .setConfig(PulsarOptions.PULSAR_TLS_ALLOW_INSECURE_CONNECTION, Boolean.TRUE)
+                .build();
+
         DataStream<String> fixedStream = env.fromSource(fixedSource, WatermarkStrategy.noWatermarks(), "Pulsar Source")
                 .map(new MapFunction<String, String>() {
                     @Override
@@ -43,6 +54,7 @@ public class DataStreamJob {
                 });
 
         fixedStream.addSink(new PrintSinkFunction<>("outputSink", Boolean.TRUE));
+        fixedStream.sinkTo(fixedDest);
         env.execute("DataStreamJob");
 
     }
