@@ -97,12 +97,6 @@ under the License.
 			<version>1.13.6</version>
 			<scope>provided</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.flink</groupId>
-			<artifactId>flink-table-planner_${scala.binary.version}</artifactId>
-			<version>${flink.version}</version>
-			<scope>provided</scope>
-		</dependency>
 
 		<dependency>
 			<groupId>org.apache.flink</groupId>
@@ -191,6 +185,7 @@ under the License.
 									<exclude>com.google.code.findbugs:jsr305</exclude>
 <!--									<exclude>org.slf4j:*</exclude>-->
 									<exclude>org.apache.logging.log4j:*</exclude>
+									<exclude>org.bouncycastle:bcprov-ext-jdk15on:*</exclude>
 								</excludes>
 							</artifactSet>
 							<filters>
