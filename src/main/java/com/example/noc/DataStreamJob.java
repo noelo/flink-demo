@@ -12,7 +12,10 @@ import org.apache.flink.connector.pulsar.source.reader.deserializer.PulsarDeseri
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
+import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SubscriptionType;
+import org.apache.flink.formats.json.*;
+import org.apache.pulsar.client.impl.schema.JSONSchema;
 
 
 public class DataStreamJob {
@@ -20,12 +23,13 @@ public class DataStreamJob {
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        PulsarSource<String> fixedSource = PulsarSource.builder()
+        PulsarSource<Order> fixedSource = PulsarSource.builder()
                 .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
                 .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
                 .setStartCursor(StartCursor.earliest())
-                .setTopics("TestDataTopic")
-                .setDeserializationSchema(PulsarDeserializationSchema.flinkSchema(new SimpleStringSchema()))
+                .setTopics("OrderDataTopic")
+//                .setDeserializationSchema(PulsarDeserializationSchema.flinkSchema(new SimpleStringSchema()))
+                .setDeserializationSchema(PulsarDeserializationSchema.pulsarSchema(JSONSchema.of(Order.class),Order.class))
                 .setSubscriptionName("DataStreamJob")
                 .setSubscriptionType(SubscriptionType.Shared)
                 .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
@@ -34,21 +38,25 @@ public class DataStreamJob {
                 .setConfig(PulsarSourceOptions.PULSAR_ENABLE_AUTO_ACKNOWLEDGE_MESSAGE, Boolean.TRUE)
                 .build();
 
-        PulsarSink<String> fixedDest = PulsarSink.builder()
+        PulsarSink<Order> fixedDest = PulsarSink.builder()
                 .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
                 .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
                 .setTopics("TestDataTopicSink")
-                .setSerializationSchema(PulsarSerializationSchema.flinkSchema(new SimpleStringSchema()))
+                .setSerializationSchema(PulsarSerializationSchema.pulsarSchema(JSONSchema.of(Order.class),Order.class))
                 .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
                 .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
                 .setConfig(PulsarOptions.PULSAR_TLS_ALLOW_INSECURE_CONNECTION, Boolean.TRUE)
                 .build();
 
-        DataStream<String> fixedStream = env.fromSource(fixedSource, WatermarkStrategy.noWatermarks(), "Pulsar Source")
-                .map(k->{return k.toUpperCase()+String.valueOf(System.currentTimeMillis());});
+        DataStream<Order> fixedStream = env.fromSource(fixedSource, WatermarkStrategy.noWatermarks(), "Pulsar Source")
+                .map(k-> {Order x=  new Order();
+                        x.product = k.product.toUpperCase();
+                        x.user = k.user;
+                        x.amount = k.amount;
+                        return x;});
 
         fixedStream.addSink(new PrintSinkFunction<>("outputSink", Boolean.TRUE));
-        fixedStream.sinkTo(fixedDest);
+//        fixedStream.sinkTo(fixedDest);
         env.execute("DataStreamJob");
     }
 }
