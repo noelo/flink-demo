@@ -2,9 +2,8 @@ package com.example.noc;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.connector.pulsar.common.config.PulsarOptions;
-import org.apache.flink.connector.pulsar.sink.PulsarSink;
-import org.apache.flink.connector.pulsar.sink.writer.serializer.PulsarSerializationSchema;
 import org.apache.flink.connector.pulsar.source.PulsarSource;
 import org.apache.flink.connector.pulsar.source.PulsarSourceOptions;
 import org.apache.flink.connector.pulsar.source.enumerator.cursor.StartCursor;
@@ -12,23 +11,28 @@ import org.apache.flink.connector.pulsar.source.reader.deserializer.PulsarDeseri
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
+import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
-import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.types.DataType;
+import org.apache.flink.types.Row;
 import org.apache.pulsar.client.api.SubscriptionType;
+import org.apache.pulsar.client.impl.schema.JSONSchema;
 
 public class StreamTableJob {
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         final StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
-        PulsarSource<String> incomingFeed = PulsarSource.builder()
+
+        PulsarSource<Order> orderFeed = PulsarSource.builder()
                 .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
                 .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
                 .setStartCursor(StartCursor.earliest())
-                .setTopics("incomingFeed")
-                .setDeserializationSchema(PulsarDeserializationSchema.flinkSchema(new SimpleStringSchema()))
-                .setSubscriptionName("IncomingStreamJob")
+                .setTopics("OrderDataTopic")
+                .setDeserializationSchema(PulsarDeserializationSchema.pulsarSchema(JSONSchema.of(Order.class), Order.class))
+                .setSubscriptionName("DataStreamJob")
                 .setSubscriptionType(SubscriptionType.Shared)
                 .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
                 .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
@@ -40,9 +44,9 @@ public class StreamTableJob {
                 .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
                 .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
                 .setStartCursor(StartCursor.earliest())
-                .setTopics("enrichmentFeed")
+                .setTopics("EnrichmentDataTopic")
                 .setDeserializationSchema(PulsarDeserializationSchema.flinkSchema(new SimpleStringSchema()))
-                .setSubscriptionName("IncomingStreamJob")
+                .setSubscriptionName("DataStreamJob")
                 .setSubscriptionType(SubscriptionType.Shared)
                 .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
                 .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
@@ -50,30 +54,24 @@ public class StreamTableJob {
                 .setConfig(PulsarSourceOptions.PULSAR_ENABLE_AUTO_ACKNOWLEDGE_MESSAGE, Boolean.TRUE)
                 .build();
 
-        PulsarSink<String> fixedDest = PulsarSink.builder()
-                .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
-                .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
-                .setTopics("enrichedFeedDest")
-                .setSerializationSchema(PulsarSerializationSchema.flinkSchema(new SimpleStringSchema()))
-                .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
-                .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
-                .setConfig(PulsarOptions.PULSAR_TLS_ALLOW_INSECURE_CONNECTION, Boolean.TRUE)
-                .build();
+        DataStream<Order> orderStream = env.fromSource(orderFeed, WatermarkStrategy.forMonotonousTimestamps(), "Order Source").returns(Order.class);
+        DataStream<String> enrichmentStream = env.fromSource(enrichmentFeed, WatermarkStrategy.forMonotonousTimestamps(), "Enrichment Source");
 
-        DataStream<String> enrichmentFeedDS = env.fromSource(enrichmentFeed, WatermarkStrategy.noWatermarks(),"Enrichment Source");
+        final Table orderTable = tableEnv.fromDataStream(orderStream);
 
-        final Table enrichmentTable = tableEnv.fromDataStream(enrichmentFeedDS);
+        final Table enrichmentTable = tableEnv.fromDataStream(enrichmentStream).as("tag");
+        orderTable.printSchema();
+        orderTable.printExplain();
 
-        DataStream<String> fixedStream = env.fromSource(incomingFeed, WatermarkStrategy.noWatermarks(), "Pulsar Source")
-                .map(k -> {
-                    TableResult result = tableEnv.sqlQuery(
-                            "SELECT * FROM "
-                                    + enrichmentTable).execute();
-                    return k.toUpperCase() + String.valueOf(System.currentTimeMillis())+result.collect().toString();
-                });
+        Table resultTable = tableEnv.sqlQuery(
+                "SELECT user, amount FROM "
+                        + orderTable);
 
-        fixedStream.addSink(new PrintSinkFunction<>("outputSink", Boolean.TRUE));
-        fixedStream.sinkTo(fixedDest);
+        resultTable.printExplain();
+
+        DataStream<Row> resultStream = tableEnv.toDataStream(resultTable);
+
+        resultStream.addSink(new PrintSinkFunction<>("resultTable", Boolean.TRUE));
         env.execute("StreamTableJob");
     }
 }

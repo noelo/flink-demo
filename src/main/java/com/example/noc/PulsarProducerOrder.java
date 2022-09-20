@@ -30,7 +30,7 @@ public class PulsarProducerOrder {
 
         Order myOrder = new Order();
         myOrder.product = "testproduct2";
-        myOrder.amount = 99;
+        myOrder.amount = 97;
         myOrder.user = 999999L;
 
         Gson gson = new Gson();
