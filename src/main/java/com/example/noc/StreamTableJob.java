@@ -57,14 +57,18 @@ public class StreamTableJob {
         DataStream<Order> orderStream = env.fromSource(orderFeed, WatermarkStrategy.forMonotonousTimestamps(), "Order Source").returns(Order.class);
         DataStream<String> enrichmentStream = env.fromSource(enrichmentFeed, WatermarkStrategy.forMonotonousTimestamps(), "Enrichment Source");
 
-        final Table orderTable = tableEnv.fromDataStream(orderStream);
+        final Table orderTable = tableEnv.fromDataStream(orderStream,
+                Schema.newBuilder()
+                        .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
+                        .watermark("rowtime", "SOURCE_WATERMARK()")
+                        .build());
 
         final Table enrichmentTable = tableEnv.fromDataStream(enrichmentStream).as("tag");
         orderTable.printSchema();
         orderTable.printExplain();
 
         Table resultTable = tableEnv.sqlQuery(
-                "SELECT user, amount FROM "
+                "SELECT rowtime, user, amount FROM "
                         + orderTable);
 
         resultTable.printExplain();

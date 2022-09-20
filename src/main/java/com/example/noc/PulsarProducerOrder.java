@@ -29,7 +29,7 @@ public class PulsarProducerOrder {
                 .create();
 
         Order myOrder = new Order();
-        myOrder.product = "testproduct2";
+        myOrder.product = "testproduct3";
         myOrder.amount = 97;
         myOrder.user = 999999L;
 
