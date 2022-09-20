@@ -5,6 +5,7 @@ import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
 
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class PulsarProducerOrder {
@@ -19,7 +20,7 @@ public class PulsarProducerOrder {
                 .statsInterval(5, TimeUnit.MINUTES)
                 .build();
 
-        Producer<Order> pulsarProducerFixedIncome = client.newProducer(JSONSchema.of(Order.class))
+        Producer<Order> pulsarProducerOrder = client.newProducer(JSONSchema.of(Order.class))
                 .producerName("OrderProducer")
                 .topic("OrderDataTopic")
                 .enableBatching(Boolean.TRUE)
@@ -28,22 +29,27 @@ public class PulsarProducerOrder {
                 .blockIfQueueFull(true)
                 .create();
 
-        Order myOrder = new Order();
-        myOrder.product = "testproduct3";
-        myOrder.amount = 97;
-        myOrder.user = 999999L;
+        Random rand = new Random();
+        for (int i = 0; i <= 10; i++) {
+            Order myOrder = new Order(rand.nextLong(), new String("Product") + i, rand.nextInt());
+            pulsarProducerOrder
+                    .newMessage().value(myOrder)
+                    .eventTime(System.currentTimeMillis())
+                    .send();
+        }
 
-        Gson gson = new Gson();
-        String json = gson.toJson(myOrder);
-        System.out.println(json);
+//        Order myOrder = new Order();
+//        myOrder.product = "testproduct3";
+//        myOrder.amount = 97;
+//        myOrder.user = 999999L;
+//
+//        Gson gson = new Gson();
+//        String json = gson.toJson(myOrder);
+//        System.out.println(json);
 
-        pulsarProducerFixedIncome
-                .newMessage().value(myOrder)
-                .eventTime(System.currentTimeMillis())
-                .send();
 
-        pulsarProducerFixedIncome.flush();
-        pulsarProducerFixedIncome.close();
+        pulsarProducerOrder.flush();
+        pulsarProducerOrder.close();
         client.close();
     }
 }
