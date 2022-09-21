@@ -15,10 +15,13 @@ import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.functions.TemporalTableFunction;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
+
+import static org.apache.flink.table.api.Expressions.$;
 
 public class StreamTableJob {
     public static void main(String[] args) throws Exception {
@@ -32,7 +35,7 @@ public class StreamTableJob {
                 .setStartCursor(StartCursor.earliest())
                 .setTopics("OrderDataTopic")
                 .setDeserializationSchema(PulsarDeserializationSchema.pulsarSchema(JSONSchema.of(Order.class), Order.class))
-                .setSubscriptionName("DataStreamJob")
+                .setSubscriptionName("StreamTableJob")
                 .setSubscriptionType(SubscriptionType.Shared)
                 .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
                 .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
@@ -40,13 +43,13 @@ public class StreamTableJob {
                 .setConfig(PulsarSourceOptions.PULSAR_ENABLE_AUTO_ACKNOWLEDGE_MESSAGE, Boolean.TRUE)
                 .build();
 
-        PulsarSource<String> enrichmentFeed = PulsarSource.builder()
+        PulsarSource<ProductDetails> productFeed = PulsarSource.builder()
                 .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
                 .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
                 .setStartCursor(StartCursor.earliest())
-                .setTopics("EnrichmentDataTopic")
-                .setDeserializationSchema(PulsarDeserializationSchema.flinkSchema(new SimpleStringSchema()))
-                .setSubscriptionName("DataStreamJob")
+                .setTopics("ProductTopic")
+                .setDeserializationSchema(PulsarDeserializationSchema.pulsarSchema(JSONSchema.of(ProductDetails.class), ProductDetails.class))
+                .setSubscriptionName("StreamTableJob")
                 .setSubscriptionType(SubscriptionType.Shared)
                 .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
                 .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
@@ -54,8 +57,10 @@ public class StreamTableJob {
                 .setConfig(PulsarSourceOptions.PULSAR_ENABLE_AUTO_ACKNOWLEDGE_MESSAGE, Boolean.TRUE)
                 .build();
 
-        DataStream<Order> orderStream = env.fromSource(orderFeed, WatermarkStrategy.forMonotonousTimestamps(), "Order Source").returns(Order.class);
-        DataStream<String> enrichmentStream = env.fromSource(enrichmentFeed, WatermarkStrategy.forMonotonousTimestamps(), "Enrichment Source");
+        DataStream<Order> orderStream = env.fromSource(orderFeed, WatermarkStrategy.forMonotonousTimestamps(), "Order Source")
+                                        .returns(Order.class);
+        DataStream<ProductDetails> productStream = env.fromSource(productFeed, WatermarkStrategy.forMonotonousTimestamps(), "Product Details Source")
+                                        .returns(ProductDetails.class);
 
         final Table orderTable = tableEnv.fromDataStream(orderStream,
                 Schema.newBuilder()
@@ -63,19 +68,43 @@ public class StreamTableJob {
                         .watermark("rowtime", "SOURCE_WATERMARK()")
                         .build());
 
-        final Table enrichmentTable = tableEnv.fromDataStream(enrichmentStream).as("tag");
         orderTable.printSchema();
         orderTable.printExplain();
+
+        final Table productDetailsTable = tableEnv.fromDataStream(productStream,
+                Schema.newBuilder()
+                        .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
+                        .watermark("rowtime", "SOURCE_WATERMARK()")
+                        .build());
+
+        tableEnv.createTemporaryView("productDetailsView", productStream,
+                Schema.newBuilder()
+                        .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
+                        .watermark("rowtime", "SOURCE_WATERMARK()")
+                        .build());
+
+        productDetailsTable.printSchema();
+        productDetailsTable.printExplain();
+
+//        TemporalTableFunction enrichTT = tableEnv
+//                .from("productDetailsView").createTemporalTableFunction($("rowtime"), $("f0"));
+//
+//        tableEnv.createTemporarySystemFunction("enrichmentFN", enrichTT);
 
         Table resultTable = tableEnv.sqlQuery(
                 "SELECT rowtime, user, amount FROM "
                         + orderTable);
 
+        Table resultTable2 = tableEnv.sqlQuery(
+                "SELECT * FROM productDetailsView");
+
         resultTable.printExplain();
 
         DataStream<Row> resultStream = tableEnv.toDataStream(resultTable);
+        DataStream<Row> resultStream2 = tableEnv.toDataStream(resultTable2);
 
-        resultStream.addSink(new PrintSinkFunction<>("resultTable", Boolean.TRUE));
+        resultStream.addSink(new PrintSinkFunction<>("orderTable ", Boolean.TRUE));
+        resultStream2.addSink(new PrintSinkFunction<>("productDetailsView ", Boolean.TRUE));
         env.execute("StreamTableJob");
     }
 }

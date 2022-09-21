@@ -1,7 +1,6 @@
 package com.example.noc;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.pulsar.common.config.PulsarOptions;
 import org.apache.flink.connector.pulsar.sink.PulsarSink;
 import org.apache.flink.connector.pulsar.sink.writer.serializer.PulsarSerializationSchema;
@@ -12,9 +11,7 @@ import org.apache.flink.connector.pulsar.source.reader.deserializer.PulsarDeseri
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
-import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SubscriptionType;
-import org.apache.flink.formats.json.*;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
 
 
@@ -49,7 +46,7 @@ public class DataStreamJob {
 
         DataStream<Order> fixedStream = env.fromSource(fixedSource, WatermarkStrategy.noWatermarks(), "Pulsar Source")
                 .map(k-> {Order x=  new Order();
-                        x.product = k.product.toUpperCase();
+                        x.productId = k.productId+1000;
                         x.user = k.user;
                         x.amount = k.amount;
                         return x;});

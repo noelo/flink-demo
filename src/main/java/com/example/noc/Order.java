@@ -2,16 +2,16 @@ package com.example.noc;
 
 public class Order {
     public Long user;
-    public String product;
+    public int productId;
     public int amount;
 
     // for POJO detection in DataStream API
     public Order() {}
 
     // for structured type detection in Table API
-    public Order(Long user, String product, int amount) {
+    public Order(Long user, int productId, int amount) {
         this.user = user;
-        this.product = product;
+        this.productId = productId;
         this.amount = amount;
     }
 
@@ -21,7 +21,7 @@ public class Order {
                 + "user="
                 + user
                 + ", product='"
-                + product
+                + productId
                 + '\''
                 + ", amount="
                 + amount

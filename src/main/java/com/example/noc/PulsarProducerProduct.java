@@ -7,7 +7,7 @@ import org.apache.pulsar.client.impl.schema.JSONSchema;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-public class PulsarProducerOrder {
+public class PulsarProducerProduct {
 
     public static void main(String[] args) throws Exception {
         PulsarClient client = PulsarClient.builder()
@@ -19,9 +19,9 @@ public class PulsarProducerOrder {
                 .statsInterval(5, TimeUnit.MINUTES)
                 .build();
 
-        Producer<Order> pulsarProducerOrder = client.newProducer(JSONSchema.of(Order.class))
-                .producerName("OrderProducer")
-                .topic("OrderDataTopic")
+        Producer<ProductDetails> pulsarProducerProduct = client.newProducer(JSONSchema.of(ProductDetails.class))
+                .producerName("ProductProducer")
+                .topic("ProductTopic")
                 .enableBatching(Boolean.TRUE)
                 .batchingMaxPublishDelay(10, TimeUnit.MILLISECONDS)
                 .batchingMaxMessages(10000)
@@ -30,15 +30,15 @@ public class PulsarProducerOrder {
 
         Random rand = new Random();
         for (int i = 0; i <= 10; i++) {
-            Order myOrder = new Order(rand.nextLong(), i, rand.nextInt());
-            pulsarProducerOrder
-                    .newMessage().value(myOrder)
+            ProductDetails product = new ProductDetails("testProduct description for product"+i, i, rand.nextLong());
+            pulsarProducerProduct
+                    .newMessage().value(product)
                     .eventTime(System.currentTimeMillis())
                     .send();
         }
 
-        pulsarProducerOrder.flush();
-        pulsarProducerOrder.close();
+        pulsarProducerProduct.flush();
+        pulsarProducerProduct.close();
         client.close();
     }
 }
