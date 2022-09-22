@@ -68,6 +68,12 @@ public class StreamTableJob {
                         .watermark("rowtime", "SOURCE_WATERMARK()")
                         .build());
 
+        tableEnv.createTemporaryView("ordersView", orderStream,
+                Schema.newBuilder()
+                        .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
+                        .watermark("rowtime", "SOURCE_WATERMARK()")
+                        .build());
+
         orderTable.printSchema();
         orderTable.printExplain();
 
@@ -98,13 +104,21 @@ public class StreamTableJob {
         Table resultTable2 = tableEnv.sqlQuery(
                 "SELECT * FROM productDetailsView");
 
+        Table resultTable3 = tableEnv.sqlQuery(
+                "SELECT * FROM ordersView "+
+                "INNER JOIN productDetailsView ON ordersView.productId = productDetailsView.productId");
+
         resultTable.printExplain();
+        resultTable3.printExplain();
+        resultTable3.printSchema();
 
         DataStream<Row> resultStream = tableEnv.toDataStream(resultTable);
         DataStream<Row> resultStream2 = tableEnv.toDataStream(resultTable2);
+        DataStream<Row> resultStream3 = tableEnv.toDataStream(resultTable3);
 
         resultStream.addSink(new PrintSinkFunction<>("orderTable ", Boolean.TRUE));
         resultStream2.addSink(new PrintSinkFunction<>("productDetailsView ", Boolean.TRUE));
+        resultStream3.addSink(new PrintSinkFunction<>("CombinedproductDetailsView ", Boolean.TRUE));
         env.execute("StreamTableJob");
     }
 }
