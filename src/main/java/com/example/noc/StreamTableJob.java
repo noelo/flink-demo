@@ -69,74 +69,42 @@ public class StreamTableJob {
         DataStream<ProductDetails> productStream = env.fromSource(productFeed, WatermarkStrategy.forMonotonousTimestamps(), "Product Details Source")
                 .returns(ProductDetails.class);
 
-//        final Table orderTable = tableEnv.fromDataStream(orderStream,
-//                Schema.newBuilder()
-//                        .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
-//                        .columnByExpression("proc_time", "PROCTIME()")
-//                        .watermark("rowtime", "SOURCE_WATERMARK()")
-//                        .build());
-
         tableEnv.createTemporaryView("ordersView", orderStream,
                 Schema.newBuilder()
                         .columnByExpression("proc_time", "PROCTIME()")
-                        .columnByMetadata("eventTime", "TIMESTAMP_LTZ(3)", "rowtime", Boolean.TRUE)
-                        .watermark("eventTime", "SOURCE_WATERMARK()")
+                        .columnByMetadata("orderTime", "TIMESTAMP_LTZ(3)", "rowtime", Boolean.TRUE)
+                        .watermark("orderTime", "SOURCE_WATERMARK()")
                         .build());
-
         tableEnv.from("ordersView").printSchema();
-        tableEnv.from("ordersView").printExplain();
 
-//        final Table productDetailsTable = tableEnv.fromDataStream(productStream,
-//                Schema.newBuilder()
-//                        .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
-//                        .columnByExpression("proc_time", "PROCTIME()")
-//                        .watermark("rowtime", "SOURCE_WATERMARK()")
-//                        .build());
-
-        tableEnv.createTemporaryView("productDetailsView", productStream,
+        tableEnv.createTemporaryView("versionedProductDetailsView", productStream,
                 Schema.newBuilder()
                         .columnByExpression("proc_time", "PROCTIME()")
-                        .columnByMetadata("eventTime", "TIMESTAMP_LTZ(3)", "rowtime", Boolean.TRUE)
-                        .watermark("eventTime", "SOURCE_WATERMARK()")
+                        .columnByMetadata("updateTime", "TIMESTAMP_LTZ(3)", "rowtime", Boolean.TRUE)
+                        .watermark("updateTime", "SOURCE_WATERMARK()")
+                        .primaryKey("productId")
                         .build());
 
-        tableEnv.createTemporaryView("versionedProductDetailsView", productStream, Schema.newBuilder()
-                .columnByExpression("proc_time", "PROCTIME()")
-                .primaryKey("productId")
-                .build());
-
         tableEnv.from("versionedProductDetailsView").printSchema();
-        tableEnv.from("versionedProductDetailsView").printExplain();
 
-        tableEnv.from("productDetailsView").printSchema();
-        tableEnv.from("productDetailsView").printExplain();
 
 //        TemporalTableFunction enrichTT = tableEnv
 //                .from("productDetailsView").createTemporalTableFunction($("rowtime"), $("f0"));
 //
 //        tableEnv.createTemporarySystemFunction("enrichmentFN", enrichTT);
 
+
         Table resultTable = tableEnv.sqlQuery(
-                "SELECT eventTime, user, amount FROM ordersView");
-
-        Table resultTable2 = tableEnv.sqlQuery(
-                "SELECT * FROM productDetailsView ORDER BY eventTime");
-
-        Table resultTable3 = tableEnv.sqlQuery(
-                "SELECT * FROM ordersView" +
-                        " INNER JOIN versionedProductDetailsView ON ordersView.productId = versionedProductDetailsView.productId");
+                "SELECT ordersView.productId, ordersView.amount, ordersView.orderTime" +
+                        ", versionedProductDetailsView.description, versionedProductDetailsView.costPrice, versionedProductDetailsView.updateTime " +
+                        " FROM ordersView INNER JOIN versionedProductDetailsView ON ordersView.productId = versionedProductDetailsView.productId");
 
         resultTable.printExplain();
-        resultTable3.printExplain();
-        resultTable3.printSchema();
+        resultTable.printSchema();
 
         DataStream<Row> resultStream = tableEnv.toDataStream(resultTable);
-        DataStream<Row> resultStream2 = tableEnv.toDataStream(resultTable2);
-        DataStream<Row> resultStream3 = tableEnv.toDataStream(resultTable3);
 
-        resultStream.addSink(new PrintSinkFunction<>("orderTable ", Boolean.TRUE));
-        resultStream2.addSink(new PrintSinkFunction<>("productDetailsView ", Boolean.TRUE));
-        resultStream3.addSink(new PrintSinkFunction<>("CombinedproductDetailsView ", Boolean.TRUE));
+        resultStream.addSink(new PrintSinkFunction<>("CombinedproductDetailsView ", Boolean.TRUE));
         env.execute("StreamTableJob");
     }
 }
