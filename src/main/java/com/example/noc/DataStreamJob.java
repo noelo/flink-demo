@@ -22,7 +22,8 @@ public class DataStreamJob {
 
         PulsarSource<Order> fixedSource = PulsarSource.builder()
                 .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
-                .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
+//                .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com:443/admin/v2/")
+                .setAdminUrl("http://pulsar-mini-broker-pulsar.apps.ocp.sno.themadgrape.com")
                 .setStartCursor(StartCursor.earliest())
                 .setTopics("OrderDataTopic")
                 .setDeserializationSchema(PulsarDeserializationSchema.pulsarSchema(JSONSchema.of(Order.class),Order.class))
@@ -34,15 +35,15 @@ public class DataStreamJob {
                 .setConfig(PulsarSourceOptions.PULSAR_ENABLE_AUTO_ACKNOWLEDGE_MESSAGE, Boolean.TRUE)
                 .build();
 
-        PulsarSink<Order> fixedDest = PulsarSink.builder()
-                .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
-                .setAdminUrl("https://sslproxy-https-route-pulsar.apps.ocp.sno.themadgrape.com")
-                .setTopics("EnrichedhedOrderDataTopic")
-                .setSerializationSchema(PulsarSerializationSchema.pulsarSchema(JSONSchema.of(Order.class),Order.class))
-                .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
-                .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
-                .setConfig(PulsarOptions.PULSAR_TLS_ALLOW_INSECURE_CONNECTION, Boolean.TRUE)
-                .build();
+//        PulsarSink<Order> fixedDest = PulsarSink.builder()
+//                .setServiceUrl("pulsar+ssl://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com:443")
+//                .setAdminUrl("https://sslproxy-route-pulsar.apps.ocp.sno.themadgrape.com")
+//                .setTopics("EnrichedhedOrderDataTopic")
+//                .setSerializationSchema(PulsarSerializationSchema.pulsarSchema(JSONSchema.of(Order.class),Order.class))
+//                .setConfig(PulsarOptions.PULSAR_TLS_HOSTNAME_VERIFICATION_ENABLE, Boolean.FALSE)
+//                .setConfig(PulsarOptions.PULSAR_TLS_TRUST_CERTS_FILE_PATH, "/home/noelo/dev/noc-pulsar-client/client/certs/pulsar-proxy.pem")
+//                .setConfig(PulsarOptions.PULSAR_TLS_ALLOW_INSECURE_CONNECTION, Boolean.TRUE)
+//                .build();
 
         DataStream<Order> fixedStream = env.fromSource(fixedSource, WatermarkStrategy.noWatermarks(), "Pulsar Source")
                 .map(k-> {Order x=  new Order();
@@ -52,7 +53,7 @@ public class DataStreamJob {
                         return x;});
 
         fixedStream.addSink(new PrintSinkFunction<>("outputSink", Boolean.TRUE));
-        fixedStream.sinkTo(fixedDest);
+//        fixedStream.sinkTo(fixedDest);
         env.execute("DataStreamJob");
     }
 }

@@ -1,8 +1,6 @@
 package com.example.noc;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.connector.pulsar.common.config.PulsarOptions;
 import org.apache.flink.connector.pulsar.source.PulsarSource;
 import org.apache.flink.connector.pulsar.source.PulsarSourceOptions;
@@ -12,17 +10,12 @@ import org.apache.flink.connector.pulsar.source.reader.deserializer.PulsarDeseri
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
-import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.table.functions.TemporalTableFunction;
-import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
-
-import static org.apache.flink.table.api.Expressions.$;
 
 public class StreamTableJob {
     public static void main(String[] args) throws Exception {
@@ -87,17 +80,17 @@ public class StreamTableJob {
 
         tableEnv.from("versionedProductDetailsView").printSchema();
 
+        tableEnv.executeSql("CREATE VIEW versioned_product_view AS SELECT productId, costPrice, updateTime FROM (" +
+                "SELECT *, ROW_NUMBER() OVER (PARTITION BY productId ORDER BY updateTime DESC) AS rowNum " +
+                " FROM versionedProductDetailsView) WHERE rowNum = 1;");
 
-//        TemporalTableFunction enrichTT = tableEnv
-//                .from("productDetailsView").createTemporalTableFunction($("rowtime"), $("f0"));
-//
-//        tableEnv.createTemporarySystemFunction("enrichmentFN", enrichTT);
+        Table resultTable = tableEnv.sqlQuery(" SELECT o.productId, o.orderTime, o.amount * r.costPrice AS totalAmt "+
+        "FROM ordersView AS o JOIN versioned_product_view FOR SYSTEM_TIME AS OF o.orderTime AS r ON o.productId = r.productId;");
 
-
-        Table resultTable = tableEnv.sqlQuery(
-                "SELECT ordersView.productId, ordersView.amount, ordersView.orderTime" +
-                        ", versionedProductDetailsView.description, versionedProductDetailsView.costPrice, versionedProductDetailsView.updateTime " +
-                        " FROM ordersView INNER JOIN versionedProductDetailsView ON ordersView.productId = versionedProductDetailsView.productId");
+//        Table resultTable = tableEnv.sqlQuery(
+//                "SELECT ordersView.productId, ordersView.amount, ordersView.orderTime" +
+//                        ", versionedProductDetailsView.description, versionedProductDetailsView.costPrice, versionedProductDetailsView.updateTime " +
+//                        " FROM ordersView INNER JOIN versionedProductDetailsView ON ordersView.productId = versionedProductDetailsView.productId");
 
         resultTable.printExplain();
         resultTable.printSchema();
