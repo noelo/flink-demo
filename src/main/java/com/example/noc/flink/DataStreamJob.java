@@ -1,9 +1,7 @@
-package com.example.noc;
+package com.example.noc.flink;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.pulsar.common.config.PulsarOptions;
-import org.apache.flink.connector.pulsar.sink.PulsarSink;
-import org.apache.flink.connector.pulsar.sink.writer.serializer.PulsarSerializationSchema;
 import org.apache.flink.connector.pulsar.source.PulsarSource;
 import org.apache.flink.connector.pulsar.source.PulsarSourceOptions;
 import org.apache.flink.connector.pulsar.source.enumerator.cursor.StartCursor;
@@ -13,6 +11,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
+import org.example.schema.Order;
 
 
 public class DataStreamJob {

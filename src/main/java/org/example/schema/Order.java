@@ -1,4 +1,4 @@
-package com.example.noc;
+package org.example.schema;
 
 public class Order {
     public Long user;

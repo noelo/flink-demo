@@ -1,8 +1,9 @@
-package com.example.noc;
+package com.example.noc.pulsar;
 
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
+import org.example.schema.Order;
 
 import java.util.Random;
 import java.util.concurrent.TimeUnit;

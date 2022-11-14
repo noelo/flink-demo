@@ -1,4 +1,4 @@
-package com.example.noc;
+package com.example.noc.flink;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.pulsar.common.config.PulsarOptions;
@@ -16,6 +16,8 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
+import org.example.schema.Order;
+import org.example.schema.ProductDetails;
 
 public class StreamTableJob {
     public static void main(String[] args) throws Exception {

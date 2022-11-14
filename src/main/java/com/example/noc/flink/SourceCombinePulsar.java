@@ -1,4 +1,4 @@
-package com.example.noc;
+package com.example.noc.flink;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.base.source.hybrid.HybridSource;
@@ -15,7 +15,7 @@ import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
 import org.example.schema.FixedIncomeReturnMacroSchema;
 
-public class SourceCombine {
+public class SourceCombinePulsar {
 
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();

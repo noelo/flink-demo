@@ -29,12 +29,13 @@ under the License.
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-<!--        <flink.version>1.15.2</flink.version>-->
         <flink.version>1.16.0</flink.version>
         <target.java.version>11</target.java.version>
         <scala.binary.version>2.12</scala.binary.version>
         <maven.compiler.source>${target.java.version}</maven.compiler.source>
         <maven.compiler.target>${target.java.version}</maven.compiler.target>
+        <scala.main.version>2.12</scala.main.version>
+        <hadoop-version>3.1.0</hadoop-version>
         <log4j.version>2.17.1</log4j.version>
     </properties>
 
@@ -49,6 +50,10 @@ under the License.
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
+        </repository>
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
         </repository>
     </repositories>
 
@@ -110,20 +115,69 @@ under the License.
             <version>${flink.version}</version>
             <scope>provided</scope>
         </dependency>
-
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-base</artifactId>
             <version>${flink.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-pulsar</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-pulsar-noc</artifactId>
-            <!--            <version>1.17-SNAPSHOT</version>-->
+            <artifactId>flink-connector-kafka</artifactId>
             <version>${flink.version}</version>
-            <!--			<scope>provided</scope>-->
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-parquet</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.delta</groupId>
+            <artifactId>delta-flink</artifactId>
+            <version>0.5.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>1.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <version>7.2.2</version>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-streams-avro-serde</artifactId>
+            <version>7.3.0</version>
+        </dependency>
+
+
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.3.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.delta</groupId>
+            <artifactId>delta-standalone_${scala.main.version}</artifactId>
+            <version>0.5.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${hadoop-version}</version>
         </dependency>
 
         <dependency>
@@ -217,6 +271,7 @@ under the License.
                                     <!--									<exclude>org.slf4j:*</exclude>-->
                                     <exclude>org.apache.logging.log4j:*</exclude>
                                     <exclude>org.bouncycastle:bcprov-ext-jdk15on:*</exclude>
+                                    <exclude></exclude>
                                 </excludes>
                             </artifactSet>
                             <filters>
@@ -235,7 +290,7 @@ under the License.
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <!--								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
-                                <!--									<mainClass>com.example.noc.StreamTableJob</mainClass>-->
+                                <!--									<mainClass>com.example.noc.flink.StreamTableJob</mainClass>-->
                                 <!--								</transformer>-->
                             </transformers>
                         </configuration>

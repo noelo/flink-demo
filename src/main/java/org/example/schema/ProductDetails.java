@@ -1,4 +1,4 @@
-package com.example.noc;
+package org.example.schema;
 
 public class ProductDetails {
     public String description;
