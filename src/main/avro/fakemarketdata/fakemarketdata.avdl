@@ -1,0 +1,16 @@
+@namespace("com.tradedata.schema")
+protocol fakemarketdata {
+
+	record Trade {
+		uuid tradeId;
+		timestamp_ms tradeTS;
+		timestamp_ms orderTS;
+		string tradeInst;
+		int tradePrice = 42;
+		TradeType tradeType;
+	}
+
+	enum TradeType {
+		BID, ASK, UNKNOWN
+	} = UNKNOWN;
+}

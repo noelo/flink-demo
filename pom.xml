@@ -51,10 +51,6 @@ under the License.
                 <enabled>true</enabled>
             </snapshots>
         </repository>
-        <repository>
-            <id>confluent</id>
-            <url>https://packages.confluent.io/maven/</url>
-        </repository>
     </repositories>
 
     <dependencies>
@@ -150,18 +146,18 @@ under the License.
             <artifactId>avro</artifactId>
             <version>1.11.1</version>
         </dependency>
+
         <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-avro-serializer</artifactId>
-            <version>7.2.2</version>
-        </dependency>
-        <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-streams-avro-serde</artifactId>
-            <version>7.3.0</version>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-client</artifactId>
+            <version>2.3.1.Final</version>
         </dependency>
 
-
+        <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-serdes-avro-serde</artifactId>
+            <version>2.3.1.Final</version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -195,6 +191,12 @@ under the License.
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>
             <version>5.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.javafaker</groupId>
+            <artifactId>javafaker</artifactId>
+            <version>1.0.2</version>
         </dependency>
 
 
@@ -238,6 +240,73 @@ under the License.
 
     <build>
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>idl-protocol</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-maven-plugin</artifactId>
+                <version>1.11.1</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>schema</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
+                            <outputDirectory>${project.basedir}/src/main/java/</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+<!--            <plugin>-->
+<!--                <groupId>io.apicurio</groupId>-->
+<!--                <artifactId>apicurio-registry-maven-plugin</artifactId>-->
+<!--                <version>2.3.1.Final</version>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <phase>generate-sources</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>register</goal>-->
+<!--                        </goals>-->
+<!--                        <configuration>-->
+<!--                            <registryUrl>http://example-apicurioregistry-kafkasql.kafka.router-default.apps.ocp.sno.themadgrape.com/apis/registry/v2</registryUrl>-->
+<!--                            <artifacts>-->
+<!--                                <artifact>-->
+<!--                                    <groupId>com.example.noc</groupId>-->
+<!--                                    <artifactId>fakemarketdata</artifactId>-->
+<!--                                    <file>${project.basedir}/src/main/avro/fakemarketdata/fakemarketdata.avdl</file>-->
+<!--                                    <ifExists>FAIL</ifExists>-->
+<!--                                    <type>AVRO</type>-->
+<!--                                </artifact>-->
+<!--&lt;!&ndash;                                <artifact>&ndash;&gt;-->
+<!--&lt;!&ndash;                                    <groupId>TestGroup</groupId>&ndash;&gt;-->
+<!--&lt;!&ndash;                                    <artifactId>ExampleAPI</artifactId>&ndash;&gt;-->
+<!--&lt;!&ndash;                                    <type>GRAPHQL</type>&ndash;&gt;-->
+<!--&lt;!&ndash;                                    <file>${project.basedir}/src/main/resources/apis/example.graphql</file>&ndash;&gt;-->
+<!--&lt;!&ndash;                                    <ifExists>RETURN_OR_UPDATE</ifExists>&ndash;&gt;-->
+<!--&lt;!&ndash;                                    <canonicalize>true</canonicalize>&ndash;&gt;-->
+<!--&lt;!&ndash;                                </artifact>&ndash;&gt;-->
+<!--                            </artifacts>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
+
+
 
             <!-- Java Compiler -->
             <plugin>
